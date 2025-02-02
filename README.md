@@ -15,3 +15,8 @@
 *   **🔍 Tag Analyzer:**  Gain insights into your dataset's tags with frequency analysis, category breakdowns, and powerful search capabilities, including wildcard search.
 *   **🧹 Dataset Cleaner:**  Remove orphaned tag files, video files, non-image files, and images with extreme aspect ratios or resolutions.
 *   **🗂️ File Management:**  Easily move or copy your processed dataset within Google Drive and count dataset statistics.
+
+
+## 📜 License
+
+This project is distributed under the Apache License 2.0. See `LICENSE` file for more information.
