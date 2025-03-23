@@ -532,6 +532,16 @@ step3_installed_flag = False # Flag to track installation
 
 if enable_semantic_duplicate_finding:
 
+    temp_txt_dir = os.path.join(root_dir, "temp_txt_dir") # TEMP DIR IN ROOT_DIR NOW
+    txt_files = [f for f in os.listdir(images_folder) if f.lower().endswith(".txt")]
+    if txt_files:
+        os.makedirs(temp_txt_dir, exist_ok=True)
+        for txt_file in txt_files:
+            txt_path = os.path.join(images_folder, txt_file)
+            temp_txt_path = os.path.join(temp_txt_dir, txt_file)
+            !mv "{txt_path}" "{temp_txt_path}"
+        print(f"📄 Moved {len(txt_files)} .txt files to temp directory: {temp_txt_dir}")
+
     os.chdir(root_dir)
     model_name = "clip-vit-base32-torch"
     supported_types = (".png", ".jpg", ".jpeg")
@@ -647,6 +657,16 @@ if enable_semantic_duplicate_finding:
             !mv {images_folder} {images_folder}{temp_suffix}
             !mv {images_folder}{temp_suffix}/{project_subfolder} {images_folder}
             !rm -r {images_folder}{temp_suffix}
+
+            #if os.path.exists(temp_txt_dir):
+                #moved_txt_count = 0
+                #for txt_file in os.listdir(temp_txt_dir):
+                    #txt_path = os.path.join(temp_txt_dir, txt_file)
+                    #dest_txt_path = os.path.join(images_folder, txt_file)
+                    #!mv "{txt_path}" "{dest_txt_path}"
+                    #moved_txt_count += 1
+                #!rmdir "{temp_txt_dir}" # Remove the empty temp directory
+                #print(f"📄 Moved {moved_txt_count} .txt files back from {temp_txt_dir} to {images_folder}")
 
             session.refresh()
             fo.close_app()
@@ -971,6 +991,85 @@ def delete_orphan_tag_files(directory=full_directory, remove_video=False, clean_
 # Run the function with checkbox parameters
 delete_orphan_tag_files(directory=full_directory, remove_video=remove_video_files, clean_tags=clean_tag_structure, remove_dupes=remove_duplicate_tags, remove_spec_tags=remove_specific_tags, tags_to_remove=tags_to_remove, remove_aspect_ratio=remove_aspect_ratio_outliers, aspect_ratio_threshold=max_aspect_ratio_threshold, downscale_images=downscale_images, downscale_size=downscale_size) # Use full_directory
 
+#@title ✂️ Tag Remover
+
+import os
+
+# No need to import drive or define directories again
+# Define directory using the initialized full_directory
+# full_directory is assumed to be defined in the "Initialization Cell"
+
+# Colab Parameters
+tags_to_remove_str_simple = "test" #@param {type:"string"}
+
+tags_to_remove_simple = [tag.strip() for tag in tags_to_remove_str_simple.split(',') if tag.strip()]
+
+# --- ANSI Color Codes ---
+COLOR_RESET = "\033[0m"
+COLOR_WARNING = "\033[33m"  # Yellow for warnings
+COLOR_SUCCESS = "\033[32m"  # Green for success
+
+# --- Emojis ---
+EMOJI_TAG = "🏷️"
+EMOJI_DELETE = "✂️"
+EMOJI_CHECKMARK = "✅"
+
+def simple_tag_remover(directory=full_directory, tags_to_remove=[]):
+    """
+    Removes specified tags from all .txt files in the given directory.
+    """
+    if not os.path.exists(directory):
+        print(f"{COLOR_WARNING} Directory not found: {directory}{COLOR_RESET}")
+        return
+
+    if not tags_to_remove:
+        print(f"{EMOJI_WARNING} {COLOR_WARNING}Warning: No tags specified to remove. No changes will be made.{COLOR_RESET}")
+        return
+
+    print(f"\n--- {EMOJI_DELETE} Tag Removal in Progress {EMOJI_DELETE} ---")
+    print(f"Directory: {directory}")
+    print(f"Tags to remove: {tags_to_remove}")
+
+    files_modified_count = 0
+    tags_removed_count = 0
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"):
+            tag_path = os.path.join(directory, filename)
+            try:
+                with open(tag_path, 'r') as f:
+                    tags_string = f.read().strip()
+                if not tags_string:
+                    continue  # Skip empty tag files
+
+                tag_list = [tag.strip() for tag in tags_string.split(',')]
+                updated_tags = []
+                file_modified = False
+                for tag in tag_list:
+                    if tag not in tags_to_remove:
+                        updated_tags.append(tag)
+                    else:
+                        tags_removed_count += 1
+                        file_modified = True
+
+                if file_modified:
+                    updated_tag_string = ', '.join(updated_tags)
+                    with open(tag_path, 'w') as f:
+                        f.write(updated_tag_string)
+                    files_modified_count += 1
+
+            except Exception as e:
+                print(f"Error processing tag file {filename}: {e}")
+
+    print(f"\n--- {EMOJI_DELETE} Tag Removal Summary {EMOJI_DELETE} ---")
+    print(f"Files modified: {files_modified_count}")
+    print(f"Tags removed: {tags_removed_count}")
+    print(f"{EMOJI_CHECKMARK} {COLOR_SUCCESS}Simple tag removal process completed.{COLOR_RESET}")
+
+
+# Run simple tag remover with Colab parameters
+simple_tag_remover(directory=full_directory, tags_to_remove=tags_to_remove_simple)
+
 #@title 🔁 Tag Replacer
 
 import os
@@ -1069,6 +1168,79 @@ def replace_tags_in_directory(directory=full_directory, tags_to_replace=[], repl
 
 # Run tag replacement with Colab parameters
 replace_tags_in_directory(directory=full_directory, tags_to_replace=tags_to_replace, replacement_tag=replacement_tag, case_insensitive=case_insensitive)
+
+# @title 🏷️ Add Trigger Word to Existing Tags
+
+import os
+
+# No need to import drive or define directories again
+# Define directory using the initialized full_directory
+# full_directory is assumed to be defined in the "Initialization Cell"
+
+# Colab Parameters
+new_trigger_word = "test" #@param {type:"string"}
+
+# --- ANSI Color Codes ---
+COLOR_RESET = "\033[0m"
+COLOR_WARNING = "\033[33m"  # Yellow for warnings
+COLOR_SUCCESS = "\033[32m"  # Green for success
+COLOR_INFO = "\033[36m"     # Cyan for info messages
+
+# --- Emojis ---
+EMOJI_TAG = "🏷️"
+EMOJI_ADD = "➕"
+EMOJI_CHECKMARK = "✅"
+EMOJI_FOLDER = "🗂️"
+EMOJI_FILES = "💾"
+
+def add_trigger_word_to_tags(directory=full_directory, trigger_word=""):
+    """
+    Adds a specified trigger word to the beginning of tags in all .txt files in the given directory.
+    """
+    if not os.path.exists(directory):
+        print(f"{COLOR_WARNING} Directory not found: {directory}{COLOR_RESET}")
+        return
+
+    if not trigger_word:
+        print(f"{EMOJI_WARNING} {COLOR_WARNING}Warning: No trigger word specified. No changes will be made.{COLOR_RESET}")
+        return
+
+    print(f"\n--- {EMOJI_ADD} Adding Trigger Word to Tags in Progress {EMOJI_ADD} ---")
+    print(f"{EMOJI_FOLDER} Directory: {directory}")
+    print(f"{EMOJI_TAG} Trigger word to add: '{trigger_word}'")
+
+    files_modified_count = 0
+    tags_added_count = 0
+
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"):
+            tag_path = os.path.join(directory, filename)
+            try:
+                with open(tag_path, 'r') as f:
+                    tags_string = f.read().strip()
+                if not tags_string:
+                    updated_tag_string = trigger_word # If file is empty, just write the trigger word
+                else:
+                    tag_list = [tag.strip() for tag in tags_string.split(',')]
+                    updated_tags = [trigger_word] + tag_list # Prepend trigger word
+                    updated_tag_string = ', '.join(updated_tags)
+
+                with open(tag_path, 'w') as f:
+                    f.write(updated_tag_string)
+                files_modified_count += 1
+                tags_added_count += 1 # Count files modified as tags added
+
+            except Exception as e:
+                print(f"Error processing tag file {filename}: {e}")
+
+    print(f"\n--- {EMOJI_ADD} Trigger Word Addition Summary {EMOJI_ADD} ---")
+    print(f"{EMOJI_FILES} Files modified: {files_modified_count}")
+    print(f"{EMOJI_TAG} Trigger word added to {tags_added_count} tag files.")
+    print(f"{EMOJI_CHECKMARK} {COLOR_SUCCESS}Trigger word addition process completed.{COLOR_RESET}")
+
+
+# Run add trigger word function with Colab parameters
+add_trigger_word_to_tags(directory=full_directory, trigger_word=new_trigger_word)
 
 #@title 📈 Analyze Tags
 
@@ -1411,6 +1583,212 @@ def search_tags_in_directory(directory=full_directory, search_tags=[], case_inse
 
 # Run tag search with Colab parameters
 search_tags_in_directory(directory=full_directory, search_tags=search_tags, case_insensitive_search=case_insensitive_search, list_files_with_tags=list_files_with_tags)
+
+#@title 🖼️ Display Image Batch
+
+import os
+import random
+from PIL import Image
+from IPython.display import display, HTML
+import base64
+from io import BytesIO
+
+# No need to import drive or define directories again
+# Define directory using the initialized full_directory
+# full_directory is assumed to be defined in the "Initialization Cell"
+
+# Colab Parameters
+num_images_to_display = 6 #@param {type:"slider", min:1, max:24, step:1}
+grid_columns = 6 #@param {type:"slider", min:1, max:8, step:1}
+thumbnail_size = 512 #@param {type:"slider", min:128, max:1024, step:32}
+tag_filter_str = "" #@param {type:"string"}
+
+filter_tags = [tag.strip() for tag in tag_filter_str.split(',') if tag.strip()] # Process tag filter string
+
+def display_random_batch(directory=full_directory, num_images=6, grid_columns=3, thumbnail_size=128, filter_tags=[]): # Added filter_tags parameter
+    """
+    Displays a random batch of images and their tags in a grid layout, optionally filtered by tags (wildcard supported).
+    """
+    if not os.path.exists(directory):
+        print(f"Directory not found: {directory}")
+        return
+
+    image_files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))]
+    if not image_files:
+        print("No image files found in the directory.")
+        return
+
+    filtered_image_files = [] # Initialize filtered image list
+
+    if filter_tags: # Apply tag filtering if filter_tags is not empty
+        print(f"Filtering images by tags: {filter_tags}")
+        for image_filename in image_files:
+            tag_filename = os.path.splitext(image_filename)[0] + ".txt"
+            tag_path = os.path.join(directory, tag_filename)
+            if os.path.exists(tag_path):
+                try:
+                    with open(tag_path, 'r') as tag_file:
+                        tags_string = tag_file.read().strip()
+                        if tags_string:
+                            tag_list = [tag.strip() for tag in tags_string.split(',')]
+                            for search_tag in filter_tags:
+                                for tag in tag_list:
+                                    if "*" in search_tag: # Wildcard match
+                                        prefix = search_tag.split("*")[0]
+                                        if tag.lower().startswith(prefix.lower()):
+                                            filtered_image_files.append(image_filename)
+                                            raise StopIteration # Break inner loops after finding a match
+                                    else: # Exact match
+                                        if tag.lower() == search_tag.lower():
+                                            filtered_image_files.append(image_filename)
+                                            raise StopIteration # Break inner loops after finding a match
+                except StopIteration: # Custom exception to break out of nested loops efficiently
+                    pass # Continue to next image file
+                except Exception as e:
+                    print(f"Error processing tag file for {image_filename}: {e}")
+            else:
+                print(f"Warning: Tag file not found for {image_filename}") # Tag file missing warning
+
+        if not filtered_image_files:
+            print("No images found matching the tag filter.")
+            return
+    else:
+        filtered_image_files = image_files # If no filter, use all image files
+
+    random_image_files = random.sample(filtered_image_files, min(num_images, len(filtered_image_files))) # Select up to num_images from filtered list
+
+    html_grid = "<div style='display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start;'>" # Start of flex container
+
+    for image_filename in random_image_files:
+        image_path = os.path.join(directory, image_filename)
+        tag_filename = os.path.splitext(image_filename)[0] + ".txt"
+        tag_path = os.path.join(directory, tag_filename)
+
+        image_html = ""
+        tags_html = ""
+
+        try:
+            image = Image.open(image_path)
+            # --- Thumbnail Generation ---
+            thumbnail = image.copy() # Create a copy for thumbnailing
+            thumbnail.thumbnail((thumbnail_size, thumbnail_size)) # Resize in-place to thumbnail_size
+
+            # --- Base64 Encoding of Thumbnail ---
+            buffered = BytesIO() # Use BytesIO to handle image data in memory
+            thumbnail.save(buffered, format=image.format) # Save THUMBNAIL to buffer
+            img_str = base64.b64encode(buffered.getvalue()).decode() # Encode to base64
+            base64_data_uri = f"data:image/{image.format.lower()};base64,{img_str}" # Create data URI
+
+            # --- Scale to Fit Image Container (No Border) ---
+            image_html = f"<div style='height: {thumbnail_size}px; overflow: hidden; margin-bottom: 5px; display: flex; align-items: center; justify-content: center;'><img src='{base64_data_uri}' style='max-width: 100%; max-height: 100%; width: auto; height: auto;'></div>" # MODIFIED: Scale to fit image, NO border
+
+            tags_content = "No tags found"
+            if os.path.exists(tag_path):
+                with open(tag_path, 'r') as tag_file:
+                    tags_content = tag_file.read().strip()
+                    if not tags_content:
+                        tags_content = "No tags found"
+
+            # --- Enhanced Tags HTML (Filename, No List - Direct Text) ---
+            tags_html = f"""
+                <div style='word-wrap: break-word; max-width: {thumbnail_size}px; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis;'>
+                    <div style='font-weight: bold; margin-bottom: 3px;'>{image_filename}</div>  <!-- Filename in bold -->
+                    Tags:<br>{tags_content}
+                </div>
+            """ # MODIFIED: No list for tags - direct text output
+
+
+            html_grid += f"<div style='padding: 15px; width: {(100.0/grid_columns)}%; box-sizing: border-box; vertical-align: top;'>" # Start of grid cell - width based on columns
+            html_grid += image_html
+            html_grid += tags_html
+            html_grid += "</div>" # End of grid cell
+
+
+        except FileNotFoundError:
+            image_html = f"<div style='width: {thumbnail_size}px; height: {thumbnail_size}px; background-color: #eee; border: 1px dashed #999; display: flex; justify-content: center; align-items: center; margin-bottom: 5px;'>Image not found</div><br>" # Use thumbnail_size for placeholder
+            tags_html = f"<div style='word-wrap: break-word; max-width: {thumbnail_size}px; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis;'>Error loading image</div>" # MODIFIED: overflow: hidden, text-overflow: ellipsis
+            html_grid += f"<div style='padding: 15px; width: {(100.0/grid_columns)}%; box-sizing: border-box; vertical-align: top;'>" # Start of grid cell
+            html_grid += image_html
+            html_grid += tags_html
+            html_grid += "</div>" # End of grid cell
+
+        except Exception as e:
+            image_html = f"<div style='width: {thumbnail_size}px; height: {thumbnail_size}px; background-color: #eee; border: 1px dashed #999; display: flex; justify-content: center; align-items: center; margin-bottom: 5px;'>Error</div><br>" # Use thumbnail_size for placeholder
+            tags_html = f"<div style='word-wrap: break-word; max-width: {thumbnail_size}px; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis;'>Error displaying image</div>" # MODIFIED: overflow: hidden, text-overflow: ellipsis
+            html_grid += f"<div style='padding: 15px; width: {(100.0/grid_columns)}%; box-sizing: border-box; vertical-align: top;'>" # Start of grid cell
+            html_grid += image_html
+            html_grid += tags_html
+            html_grid += "</div>" # End of grid cell
+
+    html_grid += "</div>" # End of flex container
+
+    display(HTML(html_grid)) # Display the entire grid HTML
+
+# Run display random batch function with Colab parameters
+display_random_batch(directory=full_directory, num_images=num_images_to_display, grid_columns=grid_columns, thumbnail_size=thumbnail_size, filter_tags=filter_tags) # Pass filter_tags
+
+# @title ⬜ Add White Background to Transparent Images
+
+import os
+from PIL import Image
+
+# No need to import drive or define directories again
+# Define directory using the initialized full_directory
+# full_directory is assumed to be defined in the "Initialization Cell"
+
+def add_white_background_to_transparent_images(directory=full_directory):
+    """
+    Adds a white background to transparent images (like PNGs with alpha) in the specified directory.
+    Overwrites the original images with the new version.
+    """
+    if not os.path.exists(directory):
+        print(f"Directory not found: {directory}")
+        return
+
+    image_extensions = ['.png', '.webp']
+    files_processed_count = 0
+    files_modified_count = 0
+
+    print(f"\n--- Adding White Background to Transparent Images in: {directory} ---")
+
+    for filename in os.listdir(directory):
+        is_image = False
+        for ext in image_extensions:
+            if filename.lower().endswith(ext):
+                is_image = True
+                break
+        if is_image:
+            image_path = os.path.join(directory, filename)
+            try:
+                img = Image.open(image_path)
+                if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+                    files_processed_count += 1
+                    print(f"Processing transparent image: {filename}")
+                    img_no_alpha = Image.new("RGB", img.size, (255, 255, 255))
+                    try:
+                        img_no_alpha.paste(img, mask=img.convert('RGBA').split()[-1])
+                    except ValueError:
+                        print(f"Warning: Simple paste failed for {filename}. Trying composite...")
+                        img_rgba = img.convert('RGBA')
+                        img_no_alpha = Image.alpha_composite(Image.new('RGBA', img_rgba.size, (255, 255, 255, 255)), img_rgba).convert('RGB')
+
+                    img_no_alpha.save(image_path)
+                    files_modified_count += 1
+                    print(f"✅ Added white background and overwrote: {filename}")
+                else:
+                    files_processed_count += 1
+                    print(f"Skipping: {filename} - not a transparent image.")
+
+            except Exception as e:
+                print(f"❌ Error processing image {filename}: {e}")
+
+    print(f"\n--- White Background Addition Summary ---")
+    print(f"Files processed: {files_processed_count}")
+    print(f"Files modified (white background added): {files_modified_count}")
+    print(f"✅ White background addition process completed.")
+
+# Run the function
+add_white_background_to_transparent_images(directory=full_directory)
 
 #@title 🔢 Count Dataset
 
